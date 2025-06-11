@@ -2,7 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Code, FileText, TestTube2 } from 'lucide-react'
+import { Code, FileText, TestTube2, MessageCircle, Split } from 'lucide-react'
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 
@@ -62,13 +62,13 @@ export default function Home() {
                 <FileText className="mr-2 h-4 w-4" />
                 文档
               </TabsTrigger>
-              <TabsTrigger value="tests">
-                <TestTube2 className="mr-2 h-4 w-4" />
-                测试
+              <TabsTrigger value="split">
+                <Split className="mr-2 h-4 w-4" />
+                切分
               </TabsTrigger>
-              <TabsTrigger value="code">
-                <Code className="mr-2 h-4 w-4" />
-                源码
+              <TabsTrigger value="qa">
+                <MessageCircle className="mr-2 h-4 w-4" />
+                问答
               </TabsTrigger>
             </TabsList>
 
@@ -76,11 +76,11 @@ export default function Home() {
               <ContentComponent />
             </TabsContent>
 
-            <TabsContent value="tests">
+            <TabsContent value="split">
               <ContentComponent />
             </TabsContent>
 
-            <TabsContent value="code">
+            <TabsContent value="qa">
               <ContentComponent />
             </TabsContent>
           </Tabs>
