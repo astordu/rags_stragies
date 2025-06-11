@@ -57,7 +57,7 @@ export default function BasicRAGTests() {
         transition={{ duration: 0.5 }}
       >
         <h2 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-        上传文档、配置参数 -> 自动切分
+          上传文档、配置参数 &rarr; 自动切分
         </h2>
         <p className="text-gray-600"></p>
       </motion.div>
