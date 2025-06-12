@@ -3,6 +3,7 @@
 
 最全的 RAG 的所有策略
 
+![项目展示](./front/public/showcase.png)
 
 ## 技术栈
 
@@ -18,9 +19,6 @@
 - Tailwind CSS：样式框架
 - ESLint：代码质量工具
 
-## 项目展示
-
-![项目展示](./front/public/showcase.png)
 
 ## 项目结构
 
