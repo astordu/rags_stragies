@@ -6,6 +6,8 @@ from pydantic import BaseModel
 import os
 from datetime import datetime
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from utils import get_embedding
+import asyncpg
 
 app = FastAPI(title="RAG API", description="RAG系统后端API")
 
@@ -89,10 +91,24 @@ async def upload_to_knowledge_base(request: KnowledgeBaseRequest):
     上传到知识库接口
     """
     try:
-        # TODO: 实现实际的知识库存储逻辑
-        # 这里只是模拟存储
-        print(f"存储 {len(request.chunks)} 个片段到知识库 {request.knowledge_base_name}")
-        
+        # 连接PostgreSQL
+        PG_CONN_STR = os.getenv("PG_CONN_STR", "postgresql://postgres:postgres@localhost:5432/postgres")
+        conn = await asyncpg.connect(PG_CONN_STR)
+        try:
+            for idx, chunk in enumerate(request.chunks):
+                embedding = get_embedding(chunk)
+                await conn.execute(
+                    """
+                    INSERT INTO knowledge_chunks (knowledge_base_name, chunk_number, chunk_text, embedding)
+                    VALUES ($1, $2, $3, $4)
+                    """,
+                    request.knowledge_base_name,
+                    idx,
+                    chunk,
+                    embedding
+                )
+        finally:
+            await conn.close()
         return {
             "success": True,
             "message": f"成功上传 {len(request.chunks)} 个片段到知识库 {request.knowledge_base_name}"
