@@ -7,11 +7,54 @@ import { Card } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
 
+// API调用函数
+const API_BASE_URL = 'http://localhost:8000/api'
+
+async function splitDocument(file: File, chunkSize: number, overlap: number, separator: string) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('chunk_size', chunkSize.toString())
+  formData.append('overlap', overlap.toString())
+  formData.append('separator', separator)
+
+  const response = await fetch(`${API_BASE_URL}/split`, {
+    method: 'POST',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error('文档切分失败')
+  }
+
+  return response.json()
+}
+
+async function uploadToKnowledgeBase(chunks: string[], knowledgeBaseName: string) {
+  const response = await fetch(`${API_BASE_URL}/upload-to-knowledge-base`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      chunks,
+      knowledge_base_name: knowledgeBaseName,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error('上传到知识库失败')
+  }
+
+  return response.json()
+}
+
 export default function BasicRAGTests() {
   const [file, setFile] = useState<File | null>(null)
   const [chunks, setChunks] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [knowledgeBaseName, setKnowledgeBaseName] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
   
   // 切分参数配置
   const [chunkSize, setChunkSize] = useState(1000)
@@ -27,25 +70,34 @@ export default function BasicRAGTests() {
     setFile(file)
     
     try {
-      // 模拟处理延迟
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // 使用模拟数据
-      const mockChunks = [
-        "这是第一个文档片段，包含了重要的信息。这个片段展示了文档的基本结构和内容。这个片段主要介绍了RAG系统的基本概念和组成部分。",
-        "第二个片段继续讨论主题，包含了更多的细节和示例。这些信息对于理解整个文档很重要。这里详细说明了文档处理的具体步骤和注意事项。",
-        "第三个片段深入探讨了具体的技术细节，包括实现方法和注意事项。这部分内容需要仔细阅读。主要介绍了文本切分的算法和参数设置。",
-        "第四个片段总结了前面的内容，并提供了进一步的建议和指导。这些建议可以帮助读者更好地应用所学知识。包括性能优化和最佳实践。",
-        "最后一个片段包含了补充信息和参考资料，这些对于深入学习和研究很有帮助。这里提供了一些相关的技术文档和工具推荐。"
-      ]
-
-      setChunks(mockChunks)
+      const result = await splitDocument(file, chunkSize, overlap, separator)
+      setChunks(result.chunks)
     } catch (error: any) {
       console.error('文档处理错误:', error)
       setError(error.message || '文档处理失败，请重试')
       setFile(null)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleUploadToKnowledgeBase = async () => {
+    if (!knowledgeBaseName.trim()) {
+      setError('请输入知识库名称')
+      return
+    }
+
+    setIsUploading(true)
+    setError(null)
+
+    try {
+      const result = await uploadToKnowledgeBase(chunks, knowledgeBaseName)
+      alert(result.message)
+    } catch (error: any) {
+      console.error('上传失败:', error)
+      setError(error.message || '上传失败，请重试')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -174,9 +226,37 @@ export default function BasicRAGTests() {
           transition={{ duration: 0.5, delay: 0.4 }}
         >
           <Card className="p-6 bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <h3 className="text-xl font-semibold mb-6 text-gray-800">
-              切分结果 <span className="text-blue-600">({chunks.length} 个片段)</span>
-            </h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-semibold text-gray-800">
+                切分结果 <span className="text-blue-600">({chunks.length} 个片段)</span>
+              </h3>
+              <div className="flex items-center space-x-4">
+                <div className="w-64">
+                  <Input
+                    type="text"
+                    value={knowledgeBaseName}
+                    onChange={(e) => setKnowledgeBaseName(e.target.value)}
+                    placeholder="输入知识库名称"
+                    disabled={isUploading}
+                    className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  />
+                </div>
+                <Button
+                  onClick={handleUploadToKnowledgeBase}
+                  disabled={isUploading || !knowledgeBaseName.trim()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isUploading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>上传中...</span>
+                    </div>
+                  ) : (
+                    '上传到知识库'
+                  )}
+                </Button>
+              </div>
+            </div>
             <div className="space-y-4 max-h-[500px] overflow-y-auto p-2 custom-scrollbar">
               {chunks.map((chunk, index) => (
                 <motion.div
