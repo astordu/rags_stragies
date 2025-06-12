@@ -1,7 +1,9 @@
-# RAG 策略系统
 
 
-最全的 RAG 的所有策略
+
+***不花钱,测试 RAG 所有策略***
+
+# 但你需要动一动手
 
 ![项目展示](./front/public/showcase.png)
 
