@@ -8,6 +8,7 @@ from datetime import datetime
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from utils import get_embedding
 import asyncpg
+from qa import router as qa_router
 
 app = FastAPI(title="RAG API", description="RAG系统后端API")
 
@@ -97,15 +98,17 @@ async def upload_to_knowledge_base(request: KnowledgeBaseRequest):
         try:
             for idx, chunk in enumerate(request.chunks):
                 embedding = get_embedding(chunk)
+                # pgvector 需要 '(v1,v2,...,vn)' 字符串格式
+                embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
                 await conn.execute(
                     """
                     INSERT INTO knowledge_chunks (knowledge_base_name, chunk_number, chunk_text, embedding)
-                    VALUES ($1, $2, $3, $4)
+                    VALUES ($1, $2, $3, $4::vector)
                     """,
                     request.knowledge_base_name,
                     idx,
                     chunk,
-                    embedding
+                    embedding_str
                 )
         finally:
             await conn.close()
@@ -116,6 +119,7 @@ async def upload_to_knowledge_base(request: KnowledgeBaseRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+app.include_router(qa_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True) 
