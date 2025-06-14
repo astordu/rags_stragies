@@ -1,3 +1,4 @@
+from config import Config
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 import httpx
@@ -6,13 +7,92 @@ import asyncio
 import json
 import asyncpg
 from utils import get_embedding
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from fastapi import UploadFile, File, Form, HTTPException
+from datetime import datetime
+from models import SplitResponse, KnowledgeBaseResponse, KnowledgeBaseRequest
 
 router = APIRouter()
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
+module_path = '/api/strategies/basic-rag'
 
-@router.get("/strategies/basic-rag/knowledge-bases")
+# 路由
+@router.post(f"{module_path}/split", response_model=SplitResponse)
+async def split_document(
+    file: UploadFile = File(...),
+    chunk_size: int = Form(1000),
+    overlap: int = Form(200),
+    separator: str = Form("\\n\\n,\\n")
+):
+    """
+    文档切分接口
+    """
+    try:
+        # 读取文件内容
+        content = await file.read()
+        text = content.decode('utf-8')
+        
+        # 使用 RecursiveCharacterTextSplitter 进行智能切分
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=chunk_size,
+            chunk_overlap=overlap,
+            separators=["\n\n", "\n", "。", "！", "？", ".", "!", "?", " ", ""],
+            length_function=len,
+        )
+        
+        chunks = text_splitter.split_text(text)
+        
+        return {
+            "success": True,
+            "chunks": chunks,
+            "metadata": {
+                "fileName": file.filename,
+                "fileSize": len(content),
+                "chunkSize": chunk_size,
+                "overlap": overlap,
+                "separator": separator,
+                "totalChunks": len(chunks),
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post(f"{module_path}/upload-to-knowledge-base", response_model=KnowledgeBaseResponse)
+async def upload_to_knowledge_base(request: KnowledgeBaseRequest):
+    """
+    上传到知识库接口
+    """
+    try:
+        # 连接PostgreSQL
+        PG_CONN_STR = os.getenv("PG_CONN_STR", "postgresql://postgres:postgres@localhost:5432/postgres")
+        conn = await asyncpg.connect(PG_CONN_STR)
+        try:
+            for idx, chunk in enumerate(request.chunks):
+                embedding = get_embedding(chunk)
+                # pgvector 需要 '(v1,v2,...,vn)' 字符串格式
+                embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
+                await conn.execute(
+                    """
+                    INSERT INTO knowledge_chunks (knowledge_base_name, chunk_number, chunk_text, embedding)
+                    VALUES ($1, $2, $3, $4::vector)
+                    """,
+                    request.knowledge_base_name,
+                    idx,
+                    chunk,
+                    embedding_str
+                )
+        finally:
+            await conn.close()
+        return {
+            "success": True,
+            "message": f"成功上传 {len(request.chunks)} 个片段到知识库 {request.knowledge_base_name}"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get(f"{module_path}/knowledge-bases")
 async def list_knowledge_bases():
     """
     查询所有已存在的知识库名称
@@ -29,7 +109,7 @@ async def list_knowledge_bases():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/strategies/basic-rag/qa/api")
+@router.post(f"{module_path}/qa")
 async def rag_qa_api(request: Request):
     data = await request.json()
     messages = data.get("messages", [])
@@ -70,10 +150,10 @@ async def rag_qa_api(request: Request):
     context_message = {"role": "system", "content": f"参考资料：\n{context_text}"}
     new_messages = [context_message] + messages
 
-    url = f"{OLLAMA_BASE_URL}/api/chat"
+    url = f"{Config.OLLAMA_BASE_URL}/api/chat"
     headers = {"Content-Type": "application/json"}
     payload = {
-        "model": OLLAMA_MODEL,
+        "model": Config.OLLAMA_MODEL,
         "messages": new_messages,
         "stream": True
     }

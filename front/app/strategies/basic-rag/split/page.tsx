@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
 
 // API调用函数
-const API_BASE_URL = 'http://localhost:8000/api'
+const API_BASE_URL = 'http://localhost:8000/api/strategies/basic-rag'
 
 async function splitDocument(file: File, chunkSize: number, overlap: number, separator: string) {
   const formData = new FormData()

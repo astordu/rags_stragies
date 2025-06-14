@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 
+
+
 export default function BasicRAGChat() {
   const [messages, setMessages] = useState([
     { role: "system", content: "欢迎来到RAG问答对话窗口！" },
@@ -11,9 +13,11 @@ export default function BasicRAGChat() {
   const [selectedKB, setSelectedKB] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const API_BASE_URL = 'http://localhost:8000/api/strategies/basic-rag'
+
   useEffect(() => {
     // 获取知识库列表
-    fetch("http://localhost:8000/strategies/basic-rag/knowledge-bases")
+    fetch(`${API_BASE_URL}/knowledge-bases`)
       .then(res => res.json())
       .then(data => {
         setKnowledgeBases(data.knowledge_bases || []);
@@ -31,7 +35,7 @@ export default function BasicRAGChat() {
     setLoading(true);
     setStreamedMsg("");
 
-    const response = await fetch("http://localhost:8000/strategies/basic-rag/qa/api", {
+    const response = await fetch(`${API_BASE_URL}/qa`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: newMessages, knowledge_base_name: selectedKB }),
