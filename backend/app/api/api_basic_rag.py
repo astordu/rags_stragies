@@ -1,4 +1,4 @@
-from config import Config
+from app.common.config import Config
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 import httpx
@@ -6,11 +6,11 @@ import os
 import asyncio
 import json
 import asyncpg
-from utils import get_embedding
+from app.common.utils import get_embedding
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from fastapi import UploadFile, File, Form, HTTPException
 from datetime import datetime
-from models import SplitResponse, KnowledgeBaseResponse, KnowledgeBaseRequest
+from app.model.models import SplitResponse, KnowledgeBaseResponse, KnowledgeBaseRequest
 
 router = APIRouter()
 
@@ -65,8 +65,7 @@ async def upload_to_knowledge_base(request: KnowledgeBaseRequest):
     """
     try:
         # 连接PostgreSQL
-        PG_CONN_STR = os.getenv("PG_CONN_STR", "postgresql://postgres:postgres@localhost:5432/postgres")
-        conn = await asyncpg.connect(PG_CONN_STR)
+        conn = await asyncpg.connect(Config.PG_CONN_STR)
         try:
             for idx, chunk in enumerate(request.chunks):
                 embedding = get_embedding(chunk)
@@ -98,8 +97,7 @@ async def list_knowledge_bases():
     查询所有已存在的知识库名称
     """
     try:
-        PG_CONN_STR = os.getenv("PG_CONN_STR", "postgresql://postgres:postgres@localhost:5432/postgres")
-        conn = await asyncpg.connect(PG_CONN_STR)
+        conn = await asyncpg.connect(Config.PG_CONN_STR)
         try:
             rows = await conn.fetch("SELECT DISTINCT knowledge_base_name FROM knowledge_chunks")
             kb_names = [row["knowledge_base_name"] for row in rows]
@@ -126,8 +124,7 @@ async def rag_qa_api(request: Request):
     query_embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
 
     # 2. 检索最相似的7条
-    PG_CONN_STR = os.getenv("PG_CONN_STR", "postgresql://postgres:postgres@localhost:5432/postgres")
-    conn = await asyncpg.connect(PG_CONN_STR)
+    conn = await asyncpg.connect(Config.PG_CONN_STR)
     try:
         # 假设embedding字段为pgvector类型，使用欧氏距离/余弦相似度
         rows = await conn.fetch(

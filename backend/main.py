@@ -1,9 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-
-
-from api_basic_rag import router as basic_rag_router
+from app.api.api_basic_rag import router as basic_rag_router
 
 app = FastAPI(title="RAG API", description="RAG系统后端API")
 
