@@ -1,6 +1,10 @@
 import os
+from app.common.config import Config
 from openai import OpenAI
 import requests
+import httpx
+import asyncio
+import json
 
 
 def get_embedding(content):
@@ -10,6 +14,32 @@ def get_embedding(content):
     )
     embedding = response.json()["embeddings"][0]
     return embedding
+
+
+'''
+请求大模型，并获取流式响应
+返回流式响应的生成器
+'''
+
+async def stream_response(new_messages):
+    url = f"{Config.OLLAMA_BASE_URL}/api/chat"
+    payload = {
+        "model": Config.OLLAMA_MODEL,
+        "messages": new_messages,
+        "stream": True
+    }
+    headers = {"Content-Type": "application/json"}
+    async with httpx.AsyncClient(timeout=None) as client:
+        async with client.stream("POST", url, headers=headers, json=payload) as resp:
+            async for chunk in resp.aiter_text():
+                try:
+                    data = json.loads(chunk)
+                    content = data.get("message", {}).get("content", "")
+                    for char in content:
+                        yield char
+                        await asyncio.sleep(0)
+                except Exception:
+                    continue
 
 # 使用示例
 if __name__ == "__main__":

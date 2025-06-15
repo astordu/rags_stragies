@@ -1,12 +1,9 @@
+import traceback
 from app.common.config import Config
+from app.repository.rag_repository import get_chunks, get_knowledge_names, insert_chunks
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
-import httpx
-import os
-import asyncio
-import json
-import asyncpg
-from app.common.utils import get_embedding
+from app.common.utils import stream_response
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from fastapi import UploadFile, File, Form, HTTPException
 from datetime import datetime
@@ -39,9 +36,7 @@ async def split_document(
             separators=["\n\n", "\n", "。", "！", "？", ".", "!", "?", " ", ""],
             length_function=len,
         )
-        
         chunks = text_splitter.split_text(text)
-        
         return {
             "success": True,
             "chunks": chunks,
@@ -65,30 +60,14 @@ async def upload_to_knowledge_base(request: KnowledgeBaseRequest):
     """
     try:
         # 连接PostgreSQL
-        conn = await asyncpg.connect(Config.PG_CONN_STR)
-        try:
-            for idx, chunk in enumerate(request.chunks):
-                embedding = get_embedding(chunk)
-                # pgvector 需要 '(v1,v2,...,vn)' 字符串格式
-                embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
-                await conn.execute(
-                    """
-                    INSERT INTO knowledge_chunks (knowledge_base_name, chunk_number, chunk_text, embedding)
-                    VALUES ($1, $2, $3, $4::vector)
-                    """,
-                    request.knowledge_base_name,
-                    idx,
-                    chunk,
-                    embedding_str
-                )
-        finally:
-            await conn.close()
+        await insert_chunks(request)
         return {
             "success": True,
             "message": f"成功上传 {len(request.chunks)} 个片段到知识库 {request.knowledge_base_name}"
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=traceback.format_exc())
 
 
 @router.get(f"{module_path}/knowledge-bases")
@@ -97,12 +76,7 @@ async def list_knowledge_bases():
     查询所有已存在的知识库名称
     """
     try:
-        conn = await asyncpg.connect(Config.PG_CONN_STR)
-        try:
-            rows = await conn.fetch("SELECT DISTINCT knowledge_base_name FROM knowledge_chunks")
-            kb_names = [row["knowledge_base_name"] for row in rows]
-        finally:
-            await conn.close()
+        kb_names = await get_knowledge_names()
         return JSONResponse(content={"knowledge_bases": kb_names})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -118,52 +92,12 @@ async def rag_qa_api(request: Request):
         raise HTTPException(status_code=400, detail="No user query found")
     user_query = messages[-1]["content"]
 
-    # 1. 获取query embedding
-    query_embedding = get_embedding(user_query)
-    # 转为 pgvector 兼容字符串
-    query_embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
+    # 1. 获取context chunks
+    context_chunks = await get_chunks(knowledge_base_name, user_query)
 
-    # 2. 检索最相似的7条
-    conn = await asyncpg.connect(Config.PG_CONN_STR)
-    try:
-        # 假设embedding字段为pgvector类型，使用欧氏距离/余弦相似度
-        rows = await conn.fetch(
-            """
-            SELECT chunk_text
-            FROM knowledge_chunks
-            WHERE knowledge_base_name = $1
-            ORDER BY (embedding <#> $2::vector) ASC
-            LIMIT 7
-            """,
-            knowledge_base_name,
-            query_embedding_str
-        )
-        context_chunks = [row["chunk_text"] for row in rows]
-    finally:
-        await conn.close()
-
-    # 3. 拼接context，插入到messages最前面
+    # 2. 拼接context，插入到messages最前面
     context_text = "\n".join(context_chunks)
     context_message = {"role": "system", "content": f"参考资料：\n{context_text}"}
     new_messages = [context_message] + messages
 
-    url = f"{Config.OLLAMA_BASE_URL}/api/chat"
-    headers = {"Content-Type": "application/json"}
-    payload = {
-        "model": Config.OLLAMA_MODEL,
-        "messages": new_messages,
-        "stream": True
-    }
-    async def stream_response():
-        async with httpx.AsyncClient(timeout=None) as client:
-            async with client.stream("POST", url, headers=headers, json=payload) as resp:
-                async for chunk in resp.aiter_text():
-                    try:
-                        data = json.loads(chunk)
-                        content = data.get("message", {}).get("content", "")
-                        for char in content:
-                            yield char
-                            await asyncio.sleep(0)
-                    except Exception:
-                        continue
-    return StreamingResponse(stream_response(), media_type="text/plain")
+    return StreamingResponse(stream_response(new_messages), media_type="text/plain")
