@@ -18,11 +18,14 @@ const Modal = ({ isOpen, onClose, children }: ModalProps) => {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 transition-all duration-300">
+      <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl transform transition-all duration-300 scale-100">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">检索</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <h3 className="text-lg font-semibold text-gray-800">检索内容</h3>
+          <button 
+            onClick={onClose} 
+            className="text-gray-500 hover:text-gray-700 transition-colors duration-200 p-1 hover:bg-gray-100 rounded-full"
+          >
             ✕
           </button>
         </div>
@@ -122,21 +125,24 @@ export default function BasicRAGChat() {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-white">
-      <div className="flex-1 overflow-y-auto space-y-4 p-4 bg-gray-50">
+    <div className="flex flex-col h-[100dvh] w-full bg-gray-50">
+      <div className="flex-1 overflow-y-auto space-y-6 p-6">
         {messages.filter(msg => msg.role !== "system").map((msg, idx) => (
-          <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} items-start`}>
+          <div 
+            key={idx} 
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} items-start animate-fade-in`}
+          >
             {msg.role !== "user" && (
-              <span className="text-2xl mr-2">
+              <span className="text-2xl mr-3 mt-1">
                 {msg.role === "assistant" && "🤖"}
               </span>
             )}
-            <div className={`max-w-[80%] rounded-lg p-3 ${
+            <div className={`max-w-[80%] rounded-2xl p-4 ${
               msg.role === "user" 
-                ? "bg-blue-500 text-white" 
-                : "bg-white border border-gray-200"
+                ? "bg-blue-600 text-white shadow-lg" 
+                : "bg-white border border-gray-200 shadow-md hover:shadow-lg transition-shadow duration-200"
             } relative`}>
-              <div className="text-sm">
+              <div className="text-sm leading-relaxed">
                 <ReactMarkdown components={{
                   a: ({node, ...props}) => <span {...props} />
                 }}>{autoNumberReferences(msg.content)}</ReactMarkdown>
@@ -147,22 +153,22 @@ export default function BasicRAGChat() {
                     setSelectedMessageContext(msg.context || []);
                     setIsModalOpen(true);
                   }}
-                  className="absolute bottom-2 right-2 text-gray-400 hover:text-gray-600 text-sm"
+                  className="absolute bottom-2 right-2 text-gray-400 hover:text-gray-600 text-sm transition-colors duration-200"
                 >
                   •••
                 </button>
               )}
             </div>
             {msg.role === "user" && (
-              <span className="text-2xl ml-2">🧑</span>
+              <span className="text-2xl ml-3 mt-1">🧑</span>
             )}
           </div>
         ))}
         {loading && (
-          <div className="flex justify-start items-start">
-            <span className="text-2xl mr-2">🤖</span>
-            <div className="max-w-[80%] rounded-lg p-3 bg-white border border-gray-200 relative">
-              <div className="text-sm">
+          <div className="flex justify-start items-start animate-pulse">
+            <span className="text-2xl mr-3 mt-1">🤖</span>
+            <div className="max-w-[80%] rounded-2xl p-4 bg-white border border-gray-200 shadow-md relative">
+              <div className="text-sm leading-relaxed">
                 <ReactMarkdown components={{
                   a: ({node, ...props}) => <span {...props} />
                 }}>{autoNumberReferences(streamedMsg)}</ReactMarkdown>
@@ -173,7 +179,7 @@ export default function BasicRAGChat() {
                     setSelectedMessageContext(contextChunks);
                     setIsModalOpen(true);
                   }}
-                  className="absolute bottom-2 right-2 text-gray-400 hover:text-gray-600 text-sm"
+                  className="absolute bottom-2 right-2 text-gray-400 hover:text-gray-600 text-sm transition-colors duration-200"
                 >
                   •••
                 </button>
@@ -185,9 +191,12 @@ export default function BasicRAGChat() {
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {selectedMessageContext.map((chunk, index) => (
-            <div key={index} className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div 
+              key={index} 
+              className="text-sm text-gray-600 bg-gray-50 p-4 rounded-xl border border-gray-200 hover:bg-gray-100 transition-colors duration-200"
+            >
               <span className="font-semibold text-blue-600 mr-2">[{index + 1}]</span>
               {chunk}
             </div>
@@ -196,14 +205,14 @@ export default function BasicRAGChat() {
       </Modal>
 
       <form
-        className="flex gap-3 p-4 border-t border-gray-200 bg-white sticky bottom-0"
+        className="flex gap-4 p-6 border-t border-gray-200 bg-white sticky bottom-0 shadow-lg"
         onSubmit={e => {
           e.preventDefault();
           if (!loading) handleSend();
         }}
       >
         <select
-          className="border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white w-48"
+          className="border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white w-48 shadow-sm hover:shadow-md"
           value={selectedKB}
           onChange={e => setSelectedKB(e.target.value)}
           disabled={loading || knowledgeBases.length === 0}
@@ -214,14 +223,14 @@ export default function BasicRAGChat() {
           ))}
         </select>
         <input
-          className="flex-1 border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          className="flex-1 border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm hover:shadow-md"
           value={input}
           onChange={e => setInput(e.target.value)}
           placeholder="请输入你的问题..."
           disabled={loading}
         />
         <button
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm hover:shadow-md"
+          className="px-8 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           type="submit"
           disabled={loading || !input.trim() || !selectedKB}
         >
