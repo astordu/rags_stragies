@@ -1,10 +1,11 @@
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Code, FileText, TestTube2, MessageCircle, Split } from 'lucide-react'
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function Home() {
   const [activeStrategy, setActiveStrategy] = useState('basic-rag')
@@ -13,18 +14,15 @@ export default function Home() {
   const strategies = [
     {
       id: 'basic-rag',
-      title: '简单切分',
-      description: 'Standard retrieval-augmented generation approach'
+      title: '简单切分'
     },
     {
       id: 'hybrid-search',
-      title: '上下文切分',
-      description: 'Combines vector and keyword search for better results'
+      title: '上下文切分'
     },
     {
       id: 'multi-hop',
-      title: '知识图谱',
-      description: 'Iterative retrieval for complex queries'
+      title: '知识图谱'
     }
   ]
 
@@ -37,8 +35,25 @@ export default function Home() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">RAG Strategies</h1>
       
-      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
+        {/* 在移动端显示下拉选择框 */}
+        <div className="lg:hidden">
+          <Select value={activeStrategy} onValueChange={setActiveStrategy}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="选择策略" />
+            </SelectTrigger>
+            <SelectContent>
+              {strategies.map((strategy) => (
+                <SelectItem key={strategy.id} value={strategy.id}>
+                  {strategy.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* 在桌面端显示卡片列表 */}
+        <div className="hidden lg:block space-y-2">
           {strategies.map((strategy) => (
             <Card 
               key={strategy.id}
@@ -47,9 +62,8 @@ export default function Home() {
               }`}
               onClick={() => setActiveStrategy(strategy.id)}
             >
-              <CardHeader>
-                <CardTitle>{strategy.title}</CardTitle>
-                <CardDescription>{strategy.description}</CardDescription>
+              <CardHeader className="p-3">
+                <CardTitle className="text-base">{strategy.title}</CardTitle>
               </CardHeader>
             </Card>
           ))}
@@ -60,7 +74,7 @@ export default function Home() {
             <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="docs">
                 <FileText className="mr-2 h-4 w-4" />
-                文档
+                说明
               </TabsTrigger>
               <TabsTrigger value="split">
                 <Split className="mr-2 h-4 w-4" />
