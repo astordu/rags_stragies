@@ -8,6 +8,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from fastapi import UploadFile, File, Form, HTTPException
 from datetime import datetime
 from app.model.models import SplitResponse, KnowledgeBaseResponse, KnowledgeBaseRequest
+import json
 
 router = APIRouter()
 
@@ -100,4 +101,10 @@ async def rag_qa_api(request: Request):
     context_message = {"role": "system", "content": f"参考资料：\n{context_text}"}
     new_messages = [context_message] + messages
 
-    return StreamingResponse(stream_response(new_messages), media_type="text/plain")
+    # 3. 返回context_chunks信息
+    async def generate():
+        yield f"data: {json.dumps({'type': 'context', 'chunks': context_chunks})}\n\n"
+        async for chunk in stream_response(new_messages):
+            yield chunk
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
