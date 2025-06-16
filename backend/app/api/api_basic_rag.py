@@ -97,7 +97,7 @@ async def rag_qa_api(request: Request):
     context_chunks = await get_chunks(knowledge_base_name, user_query)
 
     # 2. 拼接context，插入到messages最前面
-    context_text = "\n".join(context_chunks)
+    context_text = "\n\n".join([f"资料[{i+1}] {chunk}" for i, chunk in enumerate(context_chunks)])
     context_message = {"role": "system", "content": f"参考资料：\n{context_text}"}
     new_messages = [context_message] + messages
 
