@@ -58,6 +58,22 @@ ollama pull bge-m3
 ollama run qwen3:8b
 ```
 
+### 5. 运行python后端程序
+
+```bash
+cd backend
+uv pip install -r requirements.txt
+python main.py
+```
+
+### 6. 运行前端程序
+
+```bash
+cd front
+npm install
+pnm run dev
+```
+
 ---
 
 ## 技术栈
