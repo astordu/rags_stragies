@@ -17,8 +17,8 @@ export default function Home() {
       title: '简单切分'
     },
     {
-      id: 'hybrid-search',
-      title: '上下文切分'
+      id: 'semantic-similarity',
+      title: '语义切分'
     },
     {
       id: 'multi-hop',

@@ -65,3 +65,61 @@ async def get_chunks(knowledge_base_name: str, user_query: str):
     finally:
         await conn.close()
     return context_chunks
+
+
+'''
+获取所有 semantic_knowledge_chunks 知识库名称
+'''
+async def get_semantic_knowledge_names():
+    conn = await asyncpg.connect(Config.PG_CONN_STR)
+    try:
+        rows = await conn.fetch("SELECT DISTINCT knowledge_base_name FROM semantic_knowledge_chunks")
+        kb_names = [row["knowledge_base_name"] for row in rows]
+    finally:
+        await conn.close()
+    return kb_names
+
+
+'''
+插入chunks到 semantic_knowledge_chunks
+'''
+async def insert_semantic_chunks(request: KnowledgeBaseRequest):
+    conn = await asyncpg.connect(Config.PG_CONN_STR)
+    try:
+        for idx, chunk in enumerate(request.chunks):
+            embedding = get_embedding(chunk)
+            embedding_str = '[' + ','.join(str(x) for x in embedding) + ']'
+            await conn.execute(
+                """
+                INSERT INTO semantic_knowledge_chunks (knowledge_base_name, chunk_number, chunk_text, embedding)
+                VALUES ($1, $2, $3, $4::vector)
+                """,
+                request.knowledge_base_name,
+                idx,
+                chunk,
+                embedding_str
+            )
+    finally:
+        await conn.close()
+
+
+async def get_semantic_chunks(knowledge_base_name: str, user_query: str):
+    query_embedding = get_embedding(user_query)
+    query_embedding_str = '[' + ','.join(str(x) for x in query_embedding) + ']'
+    conn = await asyncpg.connect(Config.PG_CONN_STR)
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT chunk_text
+            FROM semantic_knowledge_chunks
+            WHERE knowledge_base_name = $1
+            ORDER BY (embedding <#> $2::vector) ASC
+            LIMIT 7
+            """,
+            knowledge_base_name,
+            query_embedding_str
+        )
+        context_chunks = [row["chunk_text"] for row in rows]
+    finally:
+        await conn.close()
+    return context_chunks

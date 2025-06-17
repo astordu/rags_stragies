@@ -44,6 +44,13 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks (
   chunk_text TEXT NOT NULL,
   embedding VECTOR(1024) -- 这里假设你的 embedding 维度为 1024
 );
+CREATE TABLE semantic_knowledge_chunks(
+    id SERIAL NOT NULL,
+    knowledge_base_name varchar(255) NOT NULL,
+    chunk_number integer NOT NULL,
+    chunk_text text NOT NULL,
+    embedding vector(1024)
+);
 ```
 
 ### 3. 下载 Ollama embedding

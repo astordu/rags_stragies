@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from app.api.api_basic_rag import router as basic_rag_router
+from app.api.api_semantic_similarity import router as semantic_similarity_router
 
 app = FastAPI(title="RAG API", description="RAG系统后端API")
 
@@ -16,6 +17,7 @@ app.add_middleware(
 
 
 app.include_router(basic_rag_router)
+app.include_router(semantic_similarity_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

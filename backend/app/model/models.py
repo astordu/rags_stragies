@@ -20,6 +20,9 @@ class KnowledgeBaseResponse(BaseModel):
     success: bool
     message: str
 
+class KnowledgeBaseListResponse(BaseModel):
+    knowledge_bases: List[str]
+
 class KnowledgeBaseRequest(BaseModel):
     chunks: List[str]
     knowledge_base_name: str
