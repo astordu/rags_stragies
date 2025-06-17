@@ -11,18 +11,17 @@ import { motion } from "framer-motion"
 const API_BASE_URL = 'http://localhost:8000/api/strategies/semantic-similarity'
 
 const BREAKPOINT_TYPE_OPTIONS = [
-  { value: 'percentile', label: 'Percentile (分位数)' },
-  { value: 'stddev', label: 'Stddev (标准差)' },
-  { value: 'interquartile', label: 'Interquartile (四分位)' },
-  { value: 'gradient', label: 'Gradient (梯度)' },
+  { value: 'percentile', label: 'percentile (分位数)' },
+  { value: 'standard_deviation', label: 'standard_deviation (标准差)' },
+  { value: 'interquartile', label: 'interquartile (四分位)' },
+  { value: 'gradient', label: 'gradient (梯度)' },
 ]
 
-async function splitDocument(file: File, breakpointType: string, breakpointAmount: number, bufferSize: number) {
+async function splitDocument(file: File, breakpointType: string, breakpointAmount: number) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('breakpoint_threshold_type', breakpointType)
   formData.append('breakpoint_threshold_amount', breakpointAmount.toString())
-  formData.append('buffer_size', bufferSize.toString())
 
   const response = await fetch(`${API_BASE_URL}/split`, {
     method: 'POST',
@@ -64,7 +63,6 @@ export default function SemanticSimilaritySplit() {
   const [isUploading, setIsUploading] = useState(false)
   const [breakpointType, setBreakpointType] = useState('percentile')
   const [breakpointAmount, setBreakpointAmount] = useState(95)
-  const [bufferSize, setBufferSize] = useState(1)
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -75,7 +73,7 @@ export default function SemanticSimilaritySplit() {
     setFile(file)
     
     try {
-      const result = await splitDocument(file, breakpointType, breakpointAmount, bufferSize)
+      const result = await splitDocument(file, breakpointType, breakpointAmount)
       setChunks(result.chunks)
     } catch (error: any) {
       console.error('文档处理错误:', error)
@@ -143,7 +141,7 @@ export default function SemanticSimilaritySplit() {
       >
         <Card className="p-6 bg-white shadow-lg hover:shadow-xl transition-shadow duration-300">
           <h3 className="text-xl font-semibold mb-6 text-gray-800">切分参数配置</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700">断点类型 (breakpoint_threshold_type)</Label>
               <select
@@ -166,18 +164,6 @@ export default function SemanticSimilaritySplit() {
                 min={0}
                 max={1}
                 step={0.01}
-                disabled={isLoading}
-                className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">缓冲区大小 (buffer_size)</Label>
-              <Input
-                type="number"
-                value={bufferSize}
-                onChange={e => setBufferSize(Math.max(1, Math.floor(Number(e.target.value))))}
-                min={1}
-                step={1}
                 disabled={isLoading}
                 className="w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               />

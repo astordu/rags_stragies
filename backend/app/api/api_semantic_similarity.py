@@ -41,8 +41,7 @@ async def split_document(
         text_splitter = SemanticChunker(
             LocalEmbeddings(),
             breakpoint_threshold_type=breakpoint_threshold_type,  # 可选: percentile, stddev, interquartile, gradient
-            breakpoint_threshold_amount=breakpoint_threshold_amount,
-            buffer_size=1
+            breakpoint_threshold_amount=breakpoint_threshold_amount
         )
         docs = text_splitter.create_documents([text])
         chunks = [doc.page_content for doc in docs]
