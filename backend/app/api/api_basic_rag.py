@@ -1,6 +1,6 @@
 import traceback
 from app.common.config import Config
-from app.repository.rag_repository import get_chunks, get_knowledge_names, insert_chunks
+from app.repository.rag_repository import get_basic_chunks, get_basic_knowledge_names, insert_chunks
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from app.common.utils import stream_response
@@ -34,7 +34,8 @@ async def split_document(
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=overlap,
-            separators=["\n\n", "\n", "。", "！", "？", ".", "!", "?", " ", ""],
+            # separators=["\n\n", "\n", "。", "！", "？", ".", "!", "?", " ", ""],
+            separators=separator.split(","),
             length_function=len,
         )
         chunks = text_splitter.split_text(text)
@@ -77,7 +78,7 @@ async def list_knowledge_bases():
     查询所有已存在的知识库名称
     """
     try:
-        kb_names = await get_knowledge_names()
+        kb_names = await get_basic_knowledge_names()
         return JSONResponse(content={"knowledge_bases": kb_names})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -94,7 +95,7 @@ async def rag_qa_api(request: Request):
     user_query = messages[-1]["content"]
 
     # 1. 获取context chunks
-    context_chunks = await get_chunks(knowledge_base_name, user_query)
+    context_chunks = await get_basic_chunks(knowledge_base_name, user_query)
 
     # 2. 拼接context，插入到messages最前面
     context_text = "\n\n".join([f"资料[{i+1}] {chunk}" for i, chunk in enumerate(context_chunks)])
