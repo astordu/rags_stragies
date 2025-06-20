@@ -63,3 +63,6 @@ coverage/
 .coverage
 htmlcov/
 .pytest_cache/ 
+
+front/package-lock.json
+front/yarn.lock
